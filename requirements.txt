@@ -1,0 +1,2 @@
+telepot==8.1
+pyserial==3.1
