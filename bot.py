@@ -1,17 +1,26 @@
 import re
+from time import sleep
+from datetime import datetime
 
 import telepot
 
 from user import create_user
+from frequencies import get_frequency, get_available_notes
 
 
 # Constantes - comandos
 
-LOCK_COMMAND_PATTERN = re.compile(r'^/lock$')
+START_COMMAND_PATTERN = re.compile(r'^/start$')
+
+QUEUE_COMMAND_PATTERN = re.compile(r'^/queue$')
 
 NOTES_COMMAND_PATTERN = re.compile(r'^/notas$')
 
-TEMPO_COMMAND_PATTERN = re.compile(r'^/tempo (\d+)$')
+TEMPO_COMMAND_PATTERN = re.compile(r'^/tempo(?: (\d+))?$')
+
+# queue - Entra na fila do tocador de notas
+# notas - Exibe as notas disponíveis para tocar
+# tempo - Muda o tempo usado para tocar as notas; use /tempo NUMERO
 
 
 # Auxiliares - gerenciamento de usuários
@@ -19,6 +28,8 @@ TEMPO_COMMAND_PATTERN = re.compile(r'^/tempo (\d+)$')
 user_queue = []
 
 current_user = None
+
+user_timestamp = None
 
 
 # Bot
@@ -48,10 +59,17 @@ def shift_users():
     """
 
     global current_user
+    global user_timestamp
 
     # O faz somente se a fila não estiver vazia.
     if user_queue:
         current_user = user_queue.pop(0)
+        user_timestamp = datetime.now().timestamp()
+        bot.sendMessage(
+            current_user.id,
+            current_user.name +
+            ', você está no comando agora. 1 minuto de inatividade resultará '
+            'na abdicação do controle.')
 
 
 def process_message(msg, user):
@@ -63,7 +81,22 @@ def process_message(msg, user):
     usuário.
     """
 
-    pass
+    global user_timestamp
+    text = msg['text']
+
+    # Em primeiro lugar, atualizar a timestamp do usuário
+    user_timestamp = msg['date']
+
+    # Verificar se a mensagem é um dos comandos: notas ou tempo
+
+    if NOTES_COMMAND_PATTERN.match(text):
+        notes = get_available_notes()
+
+        bot.sendMessage(user.id, 'As notas disponíveis são:')
+        bot.sendMessage(user.id, '\n'.join(notes))
+        bot.sendMessage(user.id, 'Podem ser escritas em maiúsculo ou minúsculo.')
+
+
 
 
 def handle_message(msg):
@@ -74,13 +107,49 @@ def handle_message(msg):
     user = create_user(msg['from']['first_name'], msg['from']['id'],
                        msg['date'])
 
-    if user == current_user:
-        process_message(msg, user)
+    if START_COMMAND_PATTERN.match(msg['text']):
+        bot.sendMessage(
+            user.id,
+            'Olá, %s! Bem-vindo ao programa tocador de notas do Arduino. '
+            'Use o comando /queue para entrar na fila.' % user.name)
+        bot.sendMessage(
+            user.id,
+            'O comando /tempo N serve para mudar o tempo em BPM das notas '
+            'que serão tocadas.\nPara mandar tocar as notas de fato, envie '
+            'NOTA,DURAÇÃO. Pode enviar quantas quiser de uma só vez. Exemplo:')
+        m = bot.sendMessage(
+            user.id,
+            'fs5,2 e5,2 d5,2 d5,8 e5,8 fs5,8 b4,8 fs5,4 e5,2 d5,8 e5,8 '
+            'fs5,2 fs5,8 b5,8 a5,8 fs5,8 d5,4 e5,2 fs4,8 b4,8 d5,2 d5,8 '
+            'cs5,8 d5,8 e5,8 d5,4 b4,2 a4,8 b4,8 cs5,4 cs5,8 d5,8 cs5,4 '
+            'b4,8 a4,8 b4,1')
+        bot.sendMessage(
+            user.id,
+            'Este é o tema principal da franquia Metal Gear Solid.',
+            reply_to_message_id=m['message_id'])
+
+        return
+
+    if current_user is not None and user.id == current_user.id:
+        process_message(msg, current_user)
+
     else:
-        if enqueue_user(user):
-            bot.send_message(user.id, 'Você foi adicionado à fila. '
-                                      'Aguarde um instante, por favor.')
+        # Verifica se o comando é de enfileirar
+        if QUEUE_COMMAND_PATTERN.match(msg['text']):
+            if enqueue_user(user):
+                if len(user_queue) == 1 and current_user is None:
+                    shift_users()
+                else:
+                    bot.sendMessage(user.id, 'Você foi adicionado à fila. '
+                                             'Aguarde um instante, por favor.')
+            else:
+                bot.sendMessage(user.id, 'Você já está na fila.')
 
 
 
 
+if __name__ == '__main__':
+    bot.message_loop(handle_message)
+
+    while True:
+        sleep(10)
