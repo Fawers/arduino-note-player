@@ -43,7 +43,7 @@ frequencies = OrderedDict([
 
 
 def get_frequency(note):
-    return frequencies.get(note.upper(), None)
+    return frequencies.get(note, None)
 
 
 def get_available_notes():

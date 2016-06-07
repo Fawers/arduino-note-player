@@ -5,7 +5,7 @@ from datetime import datetime
 import telepot
 
 from user import create_user
-from frequencies import get_frequency, get_available_notes
+from frequencies import get_available_notes
 
 
 # Constantes - comandos
