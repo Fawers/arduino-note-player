@@ -1,8 +1,11 @@
 from collections import namedtuple
 
 
-User = namedtuple('User', ['name', 'id', 'last_message', 'tempo'])
+class User:
+    def __init__(self, name, id, tempo):
+        self.name = name
+        self.id = id
+        self.tempo = tempo
 
-
-def create_user(name, id, last_message, tempo=120):
-    return User(name, id, last_message, tempo)
+def create_user(name, id, tempo=120):
+    return User(name, id, tempo)
