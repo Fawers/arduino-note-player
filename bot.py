@@ -4,6 +4,8 @@ from datetime import datetime
 
 import telepot
 
+import arduino
+from notes import Note
 from user import create_user
 from frequencies import get_available_notes
 
@@ -18,9 +20,19 @@ NOTES_COMMAND_PATTERN = re.compile(r'^/notas$')
 
 TEMPO_COMMAND_PATTERN = re.compile(r'^/tempo(?: (\d+))?$')
 
+SERIAL_COMMAND_PATTERN = re.compile(r'^/serial$')
+
+END_COMMAND_PATTERN = re.compile(r'^/end$')
+
 # queue - Entra na fila do tocador de notas
 # notas - Exibe as notas disponíveis para tocar
 # tempo - Muda o tempo usado para tocar as notas; use /tempo NUMERO
+# end - Finaliza a sessão
+
+
+# Regex de notas de entrada
+
+NOTE_PATTERN = re.compile(r'^[a-gA-G][Ss]?[4-6],\d\d?$')
 
 
 # Auxiliares - gerenciamento de usuários
@@ -70,6 +82,8 @@ def shift_users():
             current_user.name +
             ', você está no comando agora. 1 minuto de inatividade resultará '
             'na abdicação do controle.')
+        bot.sendMessage(
+            current_user.id, 'Para finalizar a sessão, use o comando /end.')
 
 
 def process_message(msg, user):
@@ -81,13 +95,14 @@ def process_message(msg, user):
     usuário.
     """
 
+    global current_user
     global user_timestamp
     text = msg['text']
 
     # Em primeiro lugar, atualizar a timestamp do usuário
     user_timestamp = msg['date']
 
-    # Verificar se a mensagem é um dos comandos: notas ou tempo
+    # Verificar se a mensagem é um dos comandos: end, notas ou tempo
 
     if NOTES_COMMAND_PATTERN.match(text):
         notes = get_available_notes()
@@ -95,17 +110,43 @@ def process_message(msg, user):
         bot.sendMessage(user.id, 'As notas disponíveis são:')
         bot.sendMessage(user.id, '\n'.join(notes))
         bot.sendMessage(user.id, 'Podem ser escritas em maiúsculo ou minúsculo.')
+        return
 
+    elif END_COMMAND_PATTERN.match(text):
+        bot.sendMessage(user.id, 'Sessão finalizada.')
+        current_user = None
+        shift_users()
+        return
 
+    m = TEMPO_COMMAND_PATTERN.match(text)
+    if m:
+        tempo = int(m.groups()[0] or user.tempo)
+        user.tempo = tempo
+        bot.sendMessage(user.id, 'Tempo: %d' % user.tempo)
+        return
 
+    # Neste ponto, o usuário deve ter enviado notas de fato
+
+    note_list = []
+    for note in text.split():
+        if not NOTE_PATTERN.match(note):
+            bot.sendMessage(user.id, 'Nota inválida: ' + note)
+            continue
+
+        note, length = note.split(',')
+        note_list.append(Note(note, int(length)))
+
+    arduino_notes = ' '.join(n.to_arduino(user.tempo) for n in note_list) + '\n'
+
+    print(note_list)
+    print(arduino_notes)
 
 def handle_message(msg):
     """
     Ponto de entrada das mensagens recebidas no Telegram.
     """
 
-    user = create_user(msg['from']['first_name'], msg['from']['id'],
-                       msg['date'])
+    user = create_user(msg['from']['first_name'], msg['from']['id'])
 
     if START_COMMAND_PATTERN.match(msg['text']):
         bot.sendMessage(
@@ -130,6 +171,16 @@ def handle_message(msg):
 
         return
 
+    elif SERIAL_COMMAND_PATTERN.match(msg['text']):
+        for i in range(100):
+            if arduino.setup_serial():
+                bot.sendMessage(user.id, 'Serial reconfigurada.')
+                break
+        else:
+            bot.sendMessage(user.id, 'Não foi possível reconfigurar a serial.')
+
+        return
+
     if current_user is not None and user.id == current_user.id:
         process_message(msg, current_user)
 
@@ -150,6 +201,7 @@ def handle_message(msg):
 
 if __name__ == '__main__':
     bot.message_loop(handle_message)
+    print('main loop started')
 
     while True:
         sleep(10)
