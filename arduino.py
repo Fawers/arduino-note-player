@@ -1,5 +1,5 @@
 from serial import Serial
-from setial.tools.list_ports import grep
+from serial.tools.list_ports import grep
 
 
 serial = None
@@ -25,6 +25,13 @@ def setup_serial():
         return True
 
     return False
+
+
+def write(unicode):
+    if serial:
+        return serial.write(unicode.encode('utf-8'))
+
+    return None
 
 
 setup_serial()
