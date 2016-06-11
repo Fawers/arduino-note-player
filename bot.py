@@ -1,4 +1,5 @@
 import re
+import math
 from time import sleep
 from datetime import datetime
 
@@ -6,6 +7,7 @@ import telepot
 
 import arduino
 from notes import Note
+from songs import songs
 from user import create_user
 from frequencies import get_available_notes
 
@@ -18,6 +20,8 @@ QUEUE_COMMAND_PATTERN = re.compile(r'^/queue$')
 
 NOTES_COMMAND_PATTERN = re.compile(r'^/notas$')
 
+SONGS_COMMAND_PATTERN = re.compile(r'^/musicas(?: (\d+))?$')
+
 TEMPO_COMMAND_PATTERN = re.compile(r'^/tempo(?: (\d+))?$')
 
 SERIAL_COMMAND_PATTERN = re.compile(r'^/serial$')
@@ -26,6 +30,7 @@ END_COMMAND_PATTERN = re.compile(r'^/end$')
 
 # queue - Entra na fila do tocador de notas
 # notas - Exibe as notas disponíveis para tocar
+# musicas - Exibe lista de músicas usadas como exemplo
 # tempo - Muda o tempo usado para tocar as notas; use /tempo NUMERO
 # end - Finaliza a sessão
 
@@ -102,7 +107,7 @@ def process_message(msg, user):
     # Em primeiro lugar, atualizar a timestamp do usuário
     user_timestamp = msg['date']
 
-    # Verificar se a mensagem é um dos comandos: end, notas ou tempo
+    # Verificar se a mensagem é um dos comandos: end, notas, tempo ou musicas
 
     if NOTES_COMMAND_PATTERN.match(text):
         notes = get_available_notes()
@@ -120,10 +125,40 @@ def process_message(msg, user):
 
     m = TEMPO_COMMAND_PATTERN.match(text)
     if m:
-        tempo = int(m.groups()[0] or user.tempo)
+        tempo = int(m.group(1) or user.tempo)
         user.tempo = tempo
         bot.sendMessage(user.id, 'Tempo: %d' % user.tempo)
         return
+
+    m = SONGS_COMMAND_PATTERN.match(text)
+    if m:
+        song = m.group(1)
+        if song:
+            song = int(song) - 1
+            song = songs[song]
+
+            bot.sendMessage(user.id, 'Ajustando tempo para %d...' % song.tempo,
+                            reply_markup={'hide_keyboard': True})
+            user.tempo = song.tempo
+            bot.sendMessage(user.id, song.name)
+            bot.sendMessage(user.id, song.seq)
+
+            text = song.seq
+
+        else:
+            song_list = list(enumerate(songs, 1))
+            text = '\n'.join('%d. %s' % (i, s.name)
+                             for i, s in song_list)
+            kb_columns = 3
+            kb_rows = math.ceil(len(songs) / kb_columns)
+            bot.sendMessage(
+                user.id, text, reply_markup={'keyboard':[
+                    ['/musicas %d' % i for i, _ in song_list
+                     if math.ceil(i / kb_columns) == row]
+                    for row in range(1, kb_rows+1)
+                ], 'one_time_keyboard': True})
+
+            return
 
     # Neste ponto, o usuário deve ter enviado notas de fato
 
@@ -136,10 +171,9 @@ def process_message(msg, user):
         note, length = note.split(',')
         note_list.append(Note(note, int(length)))
 
-    arduino_notes = ' '.join(n.to_arduino(user.tempo) for n in note_list) + '\n'
+    arduino_notes = ' '.join(n.to_arduino(user.tempo) for n in note_list) + ' \n'
 
-    print(note_list)
-    print(arduino_notes)
+    arduino.write(arduino_notes)
 
 def handle_message(msg):
     """
@@ -157,17 +191,8 @@ def handle_message(msg):
             user.id,
             'O comando /tempo N serve para mudar o tempo em BPM das notas '
             'que serão tocadas.\nPara mandar tocar as notas de fato, envie '
-            'NOTA,DURAÇÃO. Pode enviar quantas quiser de uma só vez. Exemplo:')
-        m = bot.sendMessage(
-            user.id,
-            'fs5,2 e5,2 d5,2 d5,8 e5,8 fs5,8 b4,8 fs5,4 e5,2 d5,8 e5,8 '
-            'fs5,2 fs5,8 b5,8 a5,8 fs5,8 d5,4 e5,2 fs4,8 b4,8 d5,2 d5,8 '
-            'cs5,8 d5,8 e5,8 d5,4 b4,2 a4,8 b4,8 cs5,4 cs5,8 d5,8 cs5,4 '
-            'b4,8 a4,8 b4,1')
-        bot.sendMessage(
-            user.id,
-            'Este é o tema principal da franquia Metal Gear Solid.',
-            reply_to_message_id=m['message_id'])
+            'NOTA,DURAÇÃO. Pode enviar quantas quiser de uma só vez.\n'
+            'Para listar as músicas de exemplo, use o comando /musicas.')
 
         return
 
@@ -195,8 +220,6 @@ def handle_message(msg):
                                              'Aguarde um instante, por favor.')
             else:
                 bot.sendMessage(user.id, 'Você já está na fila.')
-
-
 
 
 if __name__ == '__main__':
