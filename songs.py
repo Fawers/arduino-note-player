@@ -24,5 +24,12 @@ songs = [
            'd6,8 cs6,8 b4,8 g5,8 g5,8 d6,8 a5,8 d6,8 cs6,8 a5,8 cs6,8 '
            'b4,8 b4,8 d6,8 b4,8 d5,8 d5,8 fs6,8 d5,8 a4,8 fs6,8 b5,8 '
            'g5,8 e6,8 b5,8 g5,8 b5,8 g5,16 e5,16 e5,8 d6,8 e5,8 b4,8 '
-           'd6,8 cs6,8 b4,8 g5,8 g5,8 d6,8 a5,8 d6,8 e6,8 cs6,8 a5,8')
+           'd6,8 cs6,8 b4,8 g5,8 g5,8 d6,8 a5,8 d6,8 e6,8 cs6,8 a5,8'),
+    Song('The Legend of Zelda - Song of Storms', 100,
+          'b4,16 fs5,16 b5,4 b4,16 fs5,16 b5,4 cs6,8 cs6,16 d6,16 '
+          'cs6,16 d6,16 cs6,16 a5,16 fs5,4 fs5,8 b4,8 d5,16 e5,16 '
+          'fs5,4 fs5,8 fs5,8 b4,8 d5,16 e5,16 cs5,4 cs5,8 '
+          'b4,16 fs5,16 b5,4 b4,16 fs5,16 b5,4 cs6,8 cs6,16 d6,16 '
+          'cs6,16 d6,16 cs6,16 a5,16 fs5,4 fs5,8 b4,8 d5,16 e5,16 '
+          'fs5,4 fs5,8 b4,2')
 ]
