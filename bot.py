@@ -85,11 +85,12 @@ def shift_users():
         bot.sendMessage(
             current_user.id,
             current_user.name +
-            ', você está no comando agora. 1 minuto de inatividade resultará '
+            ', você está no comando agora. 2 minutos de inatividade resultará '
             'na abdicação do controle.')
         bot.sendMessage(
             current_user.id, 'Para finalizar a sessão, use o comando /end.')
-
+    else:
+        current_user = None
 
 def process_message(msg, user):
     """
@@ -119,7 +120,6 @@ def process_message(msg, user):
 
     elif END_COMMAND_PATTERN.match(text):
         bot.sendMessage(user.id, 'Sessão finalizada.')
-        current_user = None
         shift_users()
         return
 
@@ -227,4 +227,12 @@ if __name__ == '__main__':
     print('main loop started')
 
     while True:
-        sleep(10)
+        if current_user is None:
+            sleep(10)
+        else:
+            seconds = current_user.get_remaining_seconds(120, user_timestamp)
+            if seconds == 0 and user_queue:
+                bot.sendMessage(current_user.id, 'Tempo esgotado. /queue')
+                shift_users()
+            else:
+                sleep(seconds or 10)
