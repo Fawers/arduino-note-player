@@ -20,7 +20,7 @@ QUEUE_COMMAND_PATTERN = re.compile(r'^/queue$')
 
 NOTES_COMMAND_PATTERN = re.compile(r'^/notas$')
 
-SONGS_COMMAND_PATTERN = re.compile(r'^/musicas(?: (\d+))?$')
+SONGS_COMMAND_PATTERN = re.compile(r'^/musicas?(?: (\d+))?$')
 
 TEMPO_COMMAND_PATTERN = re.compile(r'^/tempo(?: (\d+))?$')
 
@@ -153,7 +153,7 @@ def process_message(msg, user):
             kb_rows = math.ceil(len(songs) / kb_columns)
             bot.sendMessage(
                 user.id, text, reply_markup={'keyboard':[
-                    ['/musicas %d' % i for i, _ in song_list
+                    ['/musica %d' % i for i, _ in song_list
                      if math.ceil(i / kb_columns) == row]
                     for row in range(1, kb_rows+1)
                 ], 'one_time_keyboard': True})
