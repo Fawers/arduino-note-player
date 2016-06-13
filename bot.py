@@ -37,7 +37,7 @@ END_COMMAND_PATTERN = re.compile(r'^/end$')
 
 # Regex de notas de entrada
 
-NOTE_PATTERN = re.compile(r'^[a-gA-G][Ss]?[4-6],\d\d?$')
+NOTE_PATTERN = re.compile(r'^(?:[a-gA-G][Ss]?[4-6]|[pP]),\d\d?$')
 
 
 # Auxiliares - gerenciamento de usuários

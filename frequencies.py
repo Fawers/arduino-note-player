@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 
 frequencies = OrderedDict([
+    ('P', 0),
     ('C4', 262),
     ('CS4', 277),
     ('D4', 294),
